@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角比 暗記クイズ</title>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', 'Yu Gothic', Meiryo, sans-serif;
+            background-color: #f0f7ff;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        #app-container {
+            width: 90%;
+            max-width: 600px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            text-align: center;
+            /* 画面切り替え時のカクつき防止 */
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #005a9c;
+            border-bottom: 2px solid #005a9c;
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin: 20px 0;
+        }
+
+        /* --- 選択ボタン (共通) --- */
+        .selection-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .select-btn {
+            font-size: 1.1rem;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            text-align: left;
+        }
+        .select-btn strong {
+            display: block;
+            font-size: 1.2rem;
+        }
+        .select-btn small {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .select-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        /* --- 時間選択ボタン (色違い) --- */
+        .time-btn {
+            background-color: #28a745; /* 緑色 */
+        }
+        .time-btn:hover {
+            background-color: #218838;
+        }
+        
+        /* 時間選択画面の「戻る」ボタン */
+        #back-to-mode-select {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #555;
+            background: #eee;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #back-to-mode-select:hover {
+            background: #ddd;
+        }
+
+
+        /* --- クイズ画面 --- */
+        #quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #progress {
+            font-size: 0.9rem;
+            color: #555;
+            text-align: left;
+            flex-grow: 1;
+        }
+        #back-to-mode {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #888;
+            padding: 0 5px;
+        }
+        #back-to-mode:hover {
+            color: #333;
+        }
+
+        /* タイマーバー */
+        #timer-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        #timer-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #007bff;
+            border-radius: 4px;
+        }
+        @keyframes countdown {
+            0% { width: 100%; background-color: #007bff; }
+            70% { width: 30%; background-color: #ffc107; }
+            100% { width: 0%; background-color: #dc3545; }
+        }
+
+        #choices-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .choice-btn {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 12px 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            word-break: keep-all;
+            white-space: nowrap;
+        }
+        .choice-btn:hover:not(:disabled) {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        .choice-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #feedback {
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 1.5em; 
+            margin-top: 15px;
+        }
+
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+
+        /* 結果画面 */
+        #score-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 30px 0;
+            white-space: pre-wrap;
+        }
+        #retry-button {
+            font-size: 1rem;
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #retry-button:hover {
+            background-color: #218838;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>三角比 暗記クイズ</h1>
+
+        <div id="mode-screen">
+            <h2>1. 難易度を選択</h2>
+            <div class="selection-buttons">
+                <button class="select-btn" data-mode="easy">
+                    <strong>基本 (30°, 45°, 60°)</strong>
+                    <small>まずはここから！</small>
+                </button>
+                <button class="select-btn" data-mode="normal">
+                    <strong>基礎 (0°〜180°)</strong>
+                    <small>鈍角を含む基本範囲</small>
+                </button>
+                <button class="select-btn" data-mode="hard">
+                    <strong>発展 (0°〜360°)</strong>
+                    <small>単位円をマスター！</small>
+                </button>
+            </div>
+        </div>
+
+        <div id="time-screen" class="hidden">
+            <h2>2. 時間制限を選択</h2>
+            <div class="selection-buttons">
+                <button class="select-btn time-btn" data-time="5000">
+                    <strong>5 秒</strong>
+                    <small>スピードチャレンジ</small>
+                </button>
+                <button class="select-btn time-btn" data-time="10000">
+                    <strong>10 秒</strong>
+                    <small>標準</small>
+                </button>
+                <button class="select-btn time-btn" data-time="15000">
+                    <strong>15 秒</strong>
+                    <small>じっくり</small>
+                </button>
+            </div>
+            <button id="back-to-mode-select">◀ 難易度選択に戻る</button>
+        </div>
+        
+        <div id="quiz-screen" class="hidden">
+            <div id="quiz-header">
+                <p id="progress"></p>
+                <button id="back-to-mode" title="モード選択に戻る">◀ 戻る</button>
+            </div>
+            <div id="timer-bar-container">
+                <div id="timer-bar"></div>
+            </div>
+            <h2 id="question"></h2>
+            <div id="choices-container"></div>
+            <p id="feedback"></p>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2>結果発表</h2>
+            <p id="score-text"></p>
+            <button id="retry-button">もう一度挑戦する</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const TOTAL_QUESTIONS = 10;
+            
+            const quizDataSets = {
+                easy: [
+                    { q: "sin 30°", a: "1/2" }, { q: "cos 30°", a: "√3/2" }, { q: "tan 30°", a: "1/√3" },
+                    { q: "sin 45°", a: "1/√2" }, { q: "cos 45°", a: "1/√2" }, { q: "tan 45°", a: "1" },
+                    { q: "sin 60°", a: "√3/2" }, { q: "cos 60°", a: "1/2" }, { q: "tan 60°", a: "√3" },
+                ],
+                normal: [
+                    { q: "sin 0°", a: "0" }, { q: "cos 0°", a: "1" }, { q: "tan 0°", a: "0" },
+                    { q: "sin 90°", a: "1" }, { q: "cos 90°", a: "0" }, { q: "tan 90°", a: "なし" },
+                    { q: "sin 120°", a: "√3/2" }, { q: "cos 120°", a: "-1/2" }, { q: "tan 120°", a: "-√3" },
+                    { q: "sin 135°", a: "1/√2" }, { q: "cos 135°", a: "-1/√2" }, { q: "tan 135°", a: "-1" },
+                    { q: "sin 150°", a: "1/2" }, { q: "cos 150°", a: "-√3/2" }, { q: "tan 150°", a: "-1/√3" },
+                    { q: "sin 180°", a: "0" }, { q: "cos 180°", a: "-1" }, { q: "tan 180°", a: "0" },
+                ],
+                hard: [
+                    { q: "sin 210°", a: "-1/2" }, { q: "cos 210°", a: "-√3/2" }, { q: "tan 210°", a: "1/√3" },
+                    { q: "sin 225°", a: "-1/√2" }, { q: "cos 225°", a: "-1/√2" }, { q: "tan 225°", a: "1" },
+                    { q: "sin 240°", a: "-√3/2" }, { q: "cos 240°", a: "-1/2" }, { q: "tan 240°", a: "√3" },
+                    { q: "sin 270°", a: "-1" }, { q: "cos 270°", a: "0" }, { q: "tan 270°", a: "なし" },
+                    { q: "sin 300°", a: "-√3/2" }, { q: "cos 300°", a: "1/2" }, { q: "tan 300°", a: "-√3" },
+                    { q: "sin 315°", a: "-1/√2" }, { q: "cos 315°", a: "1/√2" }, { q: "tan 315°", a: "-1" },
+                    { q: "sin 330°", a: "-1/2" }, { q: "cos 330°", a: "√3/2" }, { q: "tan 330°", a: "-1/√3" },
+                    { q: "sin 360°", a: "0" }, { q: "cos 360°", a: "1" }, { q: "tan 360°", a: "0" },
+                ]
+            };
+            
+            quizDataSets.normal = [...quizDataSets.easy, ...quizDataSets.normal];
+            quizDataSets.hard = [...quizDataSets.normal, ...quizDataSets.hard];
+
+            const choiceSets = {
+                easy: [ "1/2", "1/√2", "√3/2", "1/√3", "1", "√3" ],
+                normal: [ "0", "1/2", "1/√2", "√3/2", "1", "-1/2", "-1/√2", "-√3/2", "-1", "1/√3", "-1/√3", "√3", "-√3", "なし" ],
+                hard: [ "0", "1/2", "1/√2", "√3/2", "1", "-1/2", "-1/√2", "-√3/2", "-1", "1/√3", "-1/√3", "√3", "-√3", "なし" ]
+            };
+
+            // --- 選択状態とクイズデータ ---
+            let currentMode = 'easy'; // 選択された難易度
+            let currentAnswerTimeLimit = 10000; // 選択された時間
+            
+            let currentQuestions = [];
+            let currentChoices = [];
+            let currentQuizData = [];
+            let questionIndex = 0;
+            let score = 0;
+            
+            let nextQuestionTimer = null; 
+            let answerTimer = null;       
+
+            // --- HTML要素 ---
+            const modeScreen = document.getElementById('mode-screen');
+            const timeScreen = document.getElementById('time-screen');
+            const quizScreen = document.getElementById('quiz-screen');
+            const resultScreen = document.getElementById('result-screen');
+            
+            const modeButtons = document.querySelectorAll('#mode-screen .select-btn');
+            const timeButtons = document.querySelectorAll('#time-screen .select-btn');
+            const backToModeSelectButton = document.getElementById('back-to-mode-select');
+
+            const backButton = document.getElementById('back-to-mode');
+            const progressText = document.getElementById('progress');
+            const questionText = document.getElementById('question');
+            const choicesContainer = document.getElementById('choices-container');
+            const feedbackText = document.getElementById('feedback');
+            const scoreText = document.getElementById('score-text');
+            const retryButton = document.getElementById('retry-button');
+
+            /** (画面1) モード選択画面を表示 */
+            function showModeScreen() {
+                if (nextQuestionTimer) clearTimeout(nextQuestionTimer); 
+                if (answerTimer) clearTimeout(answerTimer); 
+                
+                modeScreen.classList.remove('hidden');
+                timeScreen.classList.add('hidden');
+                quizScreen.classList.add('hidden');
+                resultScreen.classList.add('hidden');
+            }
+
+            /** (画面2) 時間選択画面を表示 */
+            function showTimeScreen() {
+                modeScreen.classList.add('hidden');
+                timeScreen.classList.remove('hidden');
+                quizScreen.classList.add('hidden');
+                resultScreen.classList.add('hidden');
+            }
+
+            /** (画面3) ゲーム開始 */
+            function startGame() {
+                questionIndex = 0;
+                score = 0;
+                currentQuestions = [];
+                
+                // 保持されている currentMode と currentAnswerTimeLimit を使用
+                currentQuizData = quizDataSets[currentMode];
+                currentChoices = choiceSets[currentMode];
+                
+                let lastQuestionIndex = -1;
+
+                for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+                    let randomIndex;
+                    do {
+                        randomIndex = Math.floor(Math.random() * currentQuizData.length);
+                    } while (randomIndex === lastQuestionIndex);
+                    lastQuestionIndex = randomIndex;
+                    currentQuestions.push(currentQuizData[randomIndex]);
+                }
+
+                modeScreen.classList.add('hidden');
+                timeScreen.classList.add('hidden');
+                resultScreen.classList.add('hidden');
+                quizScreen.classList.remove('hidden');
+                
+                showQuestion();
+            }
+
+            /** (画面3) 問題表示 */
+            function showQuestion() {
+                if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
+                if (answerTimer) clearTimeout(answerTimer);
+
+                const timerContainer = document.getElementById('timer-bar-container');
+                const oldTimerBar = document.getElementById('timer-bar');
+                if (oldTimerBar) {
+                    timerContainer.removeChild(oldTimerBar);
+                }
+                const newTimerBar = document.createElement('div');
+                newTimerBar.id = 'timer-bar';
+                
+                const seconds = currentAnswerTimeLimit / 1000;
+                newTimerBar.style.animation = `countdown ${seconds}s linear forwards`; 
+                
+                timerContainer.appendChild(newTimerBar);
+
+                feedbackText.textContent = "";
+                feedbackText.className = "";
+                
+                const q = currentQuestions[questionIndex];
+
+                progressText.textContent = `第 ${questionIndex + 1} 問 / ${TOTAL_QUESTIONS} 問 | 得点: ${score} 点`;
+                questionText.textContent = `${q.q} = ?`;
+
+                choicesContainer.innerHTML = "";
+                
+                currentChoices.forEach(choice => {
+                    const button = document.createElement('button');
+                    button.textContent = choice;
+                    button.className = 'choice-btn';
+                    button.addEventListener('click', () => checkAnswer(choice, q.a, false));
+                    choicesContainer.appendChild(button);
+                });
+
+                answerTimer = setTimeout(() => {
+                    checkAnswer(null, q.a, true); 
+                }, currentAnswerTimeLimit); 
+            }
+
+            /** (画面3) 回答チェック */
+            function checkAnswer(selectedChoice, correctAnswer, isTimeout = false) {
+                if (answerTimer) clearTimeout(answerTimer);
+                if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
+
+                const timerBar = document.getElementById('timer-bar');
+                if (timerBar) {
+                    timerBar.style.animationPlayState = 'paused';
+                }
+
+                const buttons = choicesContainer.querySelectorAll('.choice-btn');
+                buttons.forEach(btn => btn.disabled = true);
+
+                if (isTimeout) {
+                    feedbackText.textContent = `残念！タイムアウト！ 正しくは ${correctAnswer} です。`;
+                    feedbackText.classList.add('incorrect');
+                } else if (selectedChoice === correctAnswer) {
+                    score += 10;
+                    feedbackText.textContent = "正解です！";
+                    feedbackText.classList.add('correct');
+                } else {
+                    feedbackText.textContent = `不正解... 正しくは ${correctAnswer} です。`;
+                    feedbackText.classList.add('incorrect');
+                }
+                
+                progressText.textContent = `第 ${questionIndex + 1} 問 / ${TOTAL_QUESTIONS} 問 | 得点: ${score} 点`;
+
+                nextQuestionTimer = setTimeout(() => {
+                    questionIndex++;
+                    if (questionIndex < TOTAL_QUESTIONS) {
+                        showQuestion();
+                    } else {
+                        showResult();
+                    }
+                }, 1500);
+            }
+
+            /** (画面4) 結果表示 */
+            function showResult() {
+                quizScreen.classList.add('hidden');
+                resultScreen.classList.remove('hidden');
+                
+                let message = "";
+                if (score === 100) {
+                    message = "素晴らしい！全問正解です！";
+                } else if (score >= 80) {
+                    message = "おしい！あと少し！";
+                } else if (score >= 50) {
+                    message = "よく頑張りました！";
+                } else {
+                    message = "繰り返し練習しましょう！";
+                }
+                
+                scoreText.textContent = `あなたの得点は\n${score} / 100 点\n${message}`;
+            }
+
+            // --- イベントリスナー設定 ---
+
+            // (画面1) モード選択ボタン
+            modeButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    currentMode = e.currentTarget.dataset.mode; 
+                    showTimeScreen(); // 時間選択画面へ
+                });
+            });
+
+            // (画面2) 時間選択ボタン
+            timeButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    // data-time は文字列なので数値に変換
+                    currentAnswerTimeLimit = parseInt(e.currentTarget.dataset.time, 10);
+                    startGame(); // クイズ開始
+                });
+            });
+
+            // (画面2) 時間選択からモード選択に戻るボタン
+            backToModeSelectButton.addEventListener('click', showModeScreen);
+
+            // (画面4) 結果画面のリトライボタン
+            retryButton.addEventListener('click', showModeScreen); // 最初のモード選択に戻る
+            
+            // (画面3) クイズ中の「戻る」ボタン
+            backButton.addEventListener('click', () => {
+                if (confirm("クイズを中断してモード選択に戻りますか？\n(現在の得点はリセットされます)")) {
+                    showModeScreen(); // 最初のモード選択に戻る
+                }
+            });
+
+            // --- 初期表示 ---
+            showModeScreen();
+        });
+    </script>
+
+</body>
+</html>
