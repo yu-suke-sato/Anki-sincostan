@@ -42,6 +42,26 @@
             margin: 20px 0;
         }
 
+        /* --- 角度表記の切り替え --- */
+        .angle-mode-selector {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .angle-mode-selector label {
+            cursor: pointer;
+            background: #f8f9fa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: background-color 0.2s;
+        }
+        .angle-mode-selector label:hover {
+            background: #e9ecef;
+        }
+
         /* --- 選択ボタン (共通) --- */
         .selection-buttons {
             display: flex;
@@ -215,6 +235,13 @@
 
         <div id="mode-screen">
             <h2>1. 難易度を選択</h2>
+            
+            <!-- 度数法/弧度法切り替え -->
+            <div class="angle-mode-selector">
+                <label><input type="radio" name="angleMode" value="degree" checked> 度数法 (30°, 180°)</label>
+                <label><input type="radio" name="angleMode" value="radian"> 弧度法 (π/6, π)</label>
+            </div>
+
             <div class="selection-buttons">
                 <button class="select-btn" data-mode="easy">
                     <strong>基本 (30°, 45°, 60°)</strong>
@@ -311,8 +338,8 @@
             };
 
             // --- 選択状態とクイズデータ ---
-            let currentMode = 'easy'; // 選択された難易度
-            let currentAnswerTimeLimit = 10000; // 選択された時間
+            let currentMode = 'easy'; 
+            let currentAnswerTimeLimit = 10000; 
             
             let currentQuestions = [];
             let currentChoices = [];
@@ -366,7 +393,6 @@
                 score = 0;
                 currentQuestions = [];
                 
-                // 保持されている currentMode と currentAnswerTimeLimit を使用
                 currentQuizData = quizDataSets[currentMode];
                 currentChoices = choiceSets[currentMode];
                 
@@ -413,7 +439,28 @@
                 const q = currentQuestions[questionIndex];
 
                 progressText.textContent = `第 ${questionIndex + 1} 問 / ${TOTAL_QUESTIONS} 問 | 得点: ${score} 点`;
-                questionText.textContent = `${q.q} = ?`;
+
+                // --- 角度表記の変換ロジック ---
+                const angleMode = document.querySelector('input[name="angleMode"]:checked').value;
+                let displayQuestion = q.q;
+
+                if (angleMode === 'radian') {
+                    const radianMap = {
+                        "0°": "0", "30°": "π/6", "45°": "π/4", "60°": "π/3", "90°": "π/2",
+                        "120°": "2π/3", "135°": "3π/4", "150°": "5π/6", "180°": "π",
+                        "210°": "7π/6", "225°": "5π/4", "240°": "4π/3", "270°": "3π/2",
+                        "300°": "5π/3", "315°": "7π/4", "330°": "11π/6", "360°": "2π"
+                    };
+                    
+                    // "sin 30°" などを分割して角度部分のみを完全一致で置換する
+                    const parts = displayQuestion.split(" ");
+                    if (parts.length === 2 && radianMap[parts[1]]) {
+                        displayQuestion = `${parts[0]} ${radianMap[parts[1]]}`;
+                    }
+                }
+
+                questionText.textContent = `${displayQuestion} = ?`;
+                // --- 変換ロジックここまで ---
 
                 choicesContainer.innerHTML = "";
                 
@@ -499,7 +546,6 @@
             // (画面2) 時間選択ボタン
             timeButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
-                    // data-time は文字列なので数値に変換
                     currentAnswerTimeLimit = parseInt(e.currentTarget.dataset.time, 10);
                     startGame(); // クイズ開始
                 });
@@ -509,12 +555,12 @@
             backToModeSelectButton.addEventListener('click', showModeScreen);
 
             // (画面4) 結果画面のリトライボタン
-            retryButton.addEventListener('click', showModeScreen); // 最初のモード選択に戻る
+            retryButton.addEventListener('click', showModeScreen); 
             
             // (画面3) クイズ中の「戻る」ボタン
             backButton.addEventListener('click', () => {
                 if (confirm("クイズを中断してモード選択に戻りますか？\n(現在の得点はリセットされます)")) {
-                    showModeScreen(); // 最初のモード選択に戻る
+                    showModeScreen(); 
                 }
             });
 
